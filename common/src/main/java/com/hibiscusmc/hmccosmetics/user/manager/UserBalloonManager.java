@@ -11,9 +11,15 @@ import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.entity.data.BukkitEntityData;
 import com.ticxo.modelengine.api.model.ActiveModel;
 import com.ticxo.modelengine.api.model.ModeledEntity;
+import kr.toxicity.model.api.BetterModel;
+import kr.toxicity.model.api.tracker.EntityHideOption;
+import kr.toxicity.model.api.tracker.EntityTrackerRegistry;
+import kr.toxicity.model.api.tracker.TrackerModifier;
+import kr.toxicity.model.api.util.EntityUtil;
 import lombok.Getter;
 import me.lojosho.hibiscuscommons.hooks.Hooks;
 import me.lojosho.hibiscuscommons.nms.NMSHandlers;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -55,8 +61,13 @@ public class UserBalloonManager {
 
     public void spawnModel(@NotNull CosmeticBalloonType cosmeticBalloonType, Color color) {
         // redo this
+        var betterModelPlugin = Bukkit.getPluginManager().getPlugin("BetterModel");
+        if (betterModelPlugin != null && !betterModelPlugin.isEnabled()) betterModelPlugin = null;
+
         if (cosmeticBalloonType.getModelName() != null && Hooks.isActiveHook("ModelEngine")) {
             balloonType = BalloonType.MODELENGINE;
+        } else if (cosmeticBalloonType.getModelName() != null && betterModelPlugin != null) {
+            balloonType = BalloonType.BETTERMODEL;
         } else {
             if (cosmeticBalloonType.getItem() != null) {
                 balloonType = BalloonType.ITEM;
@@ -93,6 +104,25 @@ public class UserBalloonManager {
             data.getTracked().setPlayerPredicate(this::playerCheck);
             return;
         }
+
+        if (balloonType == BalloonType.BETTERMODEL) {
+            MessagesUtil.sendDebugMessages("Attempting Spawning Better Model for " + cosmeticBalloonType.getModelName());
+
+            var id = cosmeticBalloonType.getModelName();
+            MessagesUtil.sendDebugMessages("Attempting Spawning Better Model for " + id);
+            var entities = BetterModel.model(id).map(r -> {
+                modelEntity.setInvisible(false);
+                modelEntity.setInvulnerable(true);
+
+                return r.getOrCreate(modelEntity, new TrackerModifier(false, false, false, Settings.getViewDistance(), false));
+            });
+            if (entities.isEmpty()) {
+                MessagesUtil.sendDebugMessages("Invalid Better Model " + id, Level.INFO);
+            } else {
+                return;
+            }
+        }
+
         if (balloonType == BalloonType.ITEM) {
             modelEntity.getEquipment().setHelmet(cosmeticBalloonType.getItem());
         }
@@ -109,6 +139,17 @@ public class UserBalloonManager {
 
             entity.destroy();
             MessagesUtil.sendDebugMessages("Balloon Model Engine Removal");
+        }
+
+        if (balloonType == BalloonType.BETTERMODEL) {
+            var tracker = EntityTrackerRegistry.registry(modelEntity.getUniqueId());
+            if (tracker == null) {
+                MessagesUtil.sendDebugMessages("Balloon Removal Failed - Better Model Tracker is Null");
+                return;
+            }
+
+            tracker.close();
+            MessagesUtil.sendDebugMessages("Balloon Better Model Removal");
         }
 
         modelEntity.remove();
@@ -136,6 +177,7 @@ public class UserBalloonManager {
             modelEntity.getEquipment().setHelmet(user.getUserCosmeticItem(cosmeticBalloonType));
         }
     }
+
     public void removePlayerFromModel(final Player viewer) {
         if (balloonType == BalloonType.MODELENGINE) {
             final ModeledEntity model = ModelEngineAPI.getModeledEntity(modelEntity);
@@ -203,6 +245,7 @@ public class UserBalloonManager {
 
     public enum BalloonType {
         MODELENGINE,
+        BETTERMODEL,
         ITEM,
         NONE
     }

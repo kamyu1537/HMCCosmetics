@@ -107,6 +107,8 @@ allprojects {
         }
         implementation("com.owen1212055:particlehelper:1.0.0-SNAPSHOT")
         implementation("com.ticxo.playeranimator:PlayerAnimator:R1.2.8")
+
+        compileOnly("io.github.toxicity188:BetterModel:1.9.1")
     }
 
     tasks {
