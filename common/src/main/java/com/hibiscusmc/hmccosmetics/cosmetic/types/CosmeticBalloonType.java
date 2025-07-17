@@ -68,7 +68,26 @@ public class CosmeticBalloonType extends Cosmetic {
 
         Location newLocation = entity.getLocation();
         Location currentLocation = user.getBalloonManager().getLocation();
-        newLocation = newLocation.clone().add(getBalloonOffset());
+
+        var player = user.getPlayer();
+        if (player == null) {
+            newLocation = newLocation.clone().add(getBalloonOffset());    
+        }else {
+            var eyeLocation = player.getEyeLocation();
+            var direction = eyeLocation.getDirection();
+
+            var offset = getBalloonOffset();
+            Vector horizontalDirection = new Vector(direction.getX(), 0, direction.getZ()).normalize();
+            Vector sideDirection = horizontalDirection.getCrossProduct(new Vector(0, 1, 0));
+
+            newLocation = newLocation.clone().add(
+                    horizontalDirection.multiply(offset.getZ())
+                            .add(new Vector(0, offset.getY(), 0))
+                            .add(sideDirection.multiply(offset.getX()))
+            );
+        }
+
+        // newLocation = newLocation.clone().add(getBalloonOffset());
         if (Settings.isBalloonHeadForward()) newLocation.setPitch(0);
 
         List<Player> viewer = HMCCPacketManager.getViewers(entity.getLocation());
